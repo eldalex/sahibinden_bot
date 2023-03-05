@@ -2,8 +2,12 @@ import sqlite3
 
 
 class Db_controller():
-    def __init__(self):
-        self.connection = sqlite3.connect('database\\sahibinden.db')
+    def __init__(self, celery=False):
+        self.connection = sqlite3.connect('database\\sahibinden.db') if not celery else sqlite3.connect(
+            '..\\database\\sahibinden.db')
+
+    def close_connection(self):
+        self.connection.close()
 
     def get_cursor(self):
         return self.connection.cursor()
@@ -106,7 +110,7 @@ class Db_controller():
 
                 cursor.close()
             except Exception as ex:
-                print(ex)
+                print(f'create_table:   {ex}')
 
     def send_user_info(self, userinfo):
         cursor = self.get_cursor()
@@ -115,7 +119,7 @@ class Db_controller():
                 f"INSERT INTO USERS_BOT (user_id, username, first_name, last_name, reg_date) "
                 f"VALUES({userinfo[0]},'{userinfo[1]}','{userinfo[2]}','{userinfo[3]}','{userinfo[4]}')")
         except Exception as ex:
-            print(ex)
+            print(f'send_user_info:   {ex}')
         self.connection.commit()
         cursor.close()
 
@@ -127,7 +131,7 @@ class Db_controller():
                 f"WHERE id={id}"
             )
         except Exception as ex:
-            print(ex)
+            print(f'delete_search_url:   {ex}')
         self.connection.commit()
         cursor.close()
 
@@ -145,25 +149,26 @@ class Db_controller():
                     all_results_distinct.pop(i)
             return all_results_distinct
         except Exception as ex:
-            print(ex)
+            print(f'get_only_new_results:   {ex}')
 
     def save_all_result_to_base(self, all_results_distinct):
         try:
             # так как все результаты хранятся в одной таблице с идентификатором по номеру объявления, результаты разных пользователей могут пересекаться
             # отправляем их на дополнительную фильтрацию, и запишем только те что еще не присутствуют в БД
             all_results_distinct = self.get_only_new_results(all_results_distinct)
-            cursor = self.get_cursor()
-            sql_insert_query = (f'INSERT INTO ALL_RESULTS (app_id,url,thumbnail_url,area,rooms,price,date,district) '
-                                f'VALUES ')
-            for result in all_results_distinct:
-                one_value_str = f"({result['id']}, '{result['link']}', '{result['thumbnail_url']}', {result['area']}, '{result['rooms']}', '{result['price']}', '{result['date_listing']}', '{result['district']}'),"
-                sql_insert_query += one_value_str
-            # Чтобы было короче, запихнём в БД одним запросом.
-            cursor.execute(sql_insert_query[:-1])
-            self.connection.commit()
-            cursor.close()
+            if all_results_distinct:
+                cursor = self.get_cursor()
+                sql_insert_query = (f'INSERT INTO ALL_RESULTS (app_id,url,thumbnail_url,area,rooms,price,date,district) '
+                                    f'VALUES ')
+                for result in all_results_distinct:
+                    one_value_str = f"({result['id']}, '{result['link']}', '{result['thumbnail_url']}', {result['area']}, '{result['rooms']}', '{result['price']}', '{result['date_listing']}', '{result['district']}'),"
+                    sql_insert_query += one_value_str
+                # Чтобы было короче, запихнём в БД одним запросом.
+                cursor.execute(sql_insert_query[:-1])
+                self.connection.commit()
+                cursor.close()
         except Exception as ex:
-            print(ex)
+            print(f'save_all_result_to_base:   {ex}')
 
     def get_user_urls(self, user_id):
         try:
@@ -179,7 +184,7 @@ class Db_controller():
             cursor.close()
             return urls
         except Exception as ex:
-            print(ex)
+            print(f'get_user_urls:   {ex}')
 
     def save_all_id_for_user(self, distinct_id, user_id):
         try:
@@ -197,18 +202,19 @@ class Db_controller():
                 if int(distinct_id[i]) in users_app_ids:
                     distinct_id.pop(i)
 
-            cursor = self.get_cursor()
-            sql_insert_query = (f'INSERT INTO USERS_FIND_RESULT (user_id,app_id) '
-                                f'VALUES ')
-            for result in distinct_id:
-                one_value_str = f"({user_id}, {result}),"
-                sql_insert_query += one_value_str
-            # Чтобы было короче, запихнём в БД одним запросом.
-            cursor.execute(sql_insert_query[:-1])
-            self.connection.commit()
-            cursor.close()
+            if distinct_id:
+                cursor = self.get_cursor()
+                sql_insert_query = (f'INSERT INTO USERS_FIND_RESULT (user_id,app_id) '
+                                    f'VALUES ')
+                for result in distinct_id:
+                    one_value_str = f"({user_id}, {result}),"
+                    sql_insert_query += one_value_str
+                # Чтобы было короче, запихнём в БД одним запросом.
+                cursor.execute(sql_insert_query[:-1])
+                self.connection.commit()
+                cursor.close()
         except Exception as ex:
-            print(ex)
+            print(f'save_all_id_for_user:   {ex},{distinct_id=},{user_id=}')
 
     def check_search_url(self, user_id, url):
         cursor = self.get_cursor()
@@ -234,7 +240,7 @@ class Db_controller():
                 print('это новый url, и у пользователя пока меньше трёх поисков')
                 return False
         except Exception as ex:
-            print(ex)
+            print(f'check_search_url:   {ex}')
         self.connection.commit()
         cursor.close()
 
@@ -246,7 +252,7 @@ class Db_controller():
                 f"VALUES ({user_id},'{url}')"
             )
         except Exception as ex:
-            print(ex)
+            print(f'save_search_url:   {ex}')
         self.connection.commit()
         cursor.close()
 
@@ -274,7 +280,7 @@ class Db_controller():
             cursor.close()
             return result
         except Exception as ex:
-            print(ex)
+            print(f'get_user_result:   {ex}')
 
     def add_to_favorite(self, user_id, app_id):
         try:
@@ -282,7 +288,7 @@ class Db_controller():
             cursor.execute(f"SELECT count(*) as count from USERS_FAVORITE_APP "
                            f"where user_id={user_id} and app_id={app_id}")
             count = cursor.fetchone()
-            if count[0]==0:
+            if count[0] == 0:
                 cursor.execute(
                     f"INSERT INTO USERS_FAVORITE_APP(user_id, app_id)  "
                     f"VALUES({user_id}, {app_id}) "
@@ -290,7 +296,7 @@ class Db_controller():
                 self.connection.commit()
             cursor.close()
         except Exception as ex:
-            print(ex)
+            print(f'add_to_favorite:   {ex}')
 
     def delete_from_favorite(self, user_id, app_id):
         try:
@@ -302,7 +308,7 @@ class Db_controller():
             self.connection.commit()
             cursor.close()
         except Exception as ex:
-            print(ex)
+            print(f'delete_from_favorite:   {ex}')
 
     def get_analyse_url(self, id):
         try:
@@ -313,7 +319,7 @@ class Db_controller():
             )
             return cursor.fetchone()
         except Exception as ex:
-            print(ex)
+            print(f'get_analyse_url:   {ex}')
 
     def save_point_to_base(self, id, minimum_price, maximum_price, average_price, median_price, count_ads):
         try:
@@ -331,7 +337,7 @@ class Db_controller():
             self.connection.commit()
             cursor.close()
         except Exception as ex:
-            print(ex)
+            print(f'save_point_to_base:   {ex}')
 
     def get_analyse_graph(self, id):
         try:
@@ -351,7 +357,7 @@ class Db_controller():
             )
             return cursor.fetchall()
         except Exception as ex:
-            print(ex)
+            print(f'get_analyse_graph:   {ex}')
 
     def get_id_analyse_tasks(self):
         try:
@@ -361,4 +367,4 @@ class Db_controller():
             cursor.close()
             return ids
         except Exception as ex:
-            print(ex)
+            print(f'get_id_analyse_tasks:   {ex}')

@@ -1,4 +1,10 @@
 import os
+import sys
+sys.path.append(os.path.abspath('celery_scheduler'))
+sys.path.append(os.path.abspath('dbcontrolpack'))
+sys.path.append(os.path.abspath('parser'))
+sys.path.append(os.path.abspath('analyse_func'))
+
 import logging
 import time
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
@@ -10,6 +16,7 @@ from dbcontrolpack.db_control import Db_controller
 from dialogs.set_find_params_dialog import Find_params_dialog
 from dialogs.show_result_dialog import Show_results_dialog
 from dialogs.show_favorite_result_dialog import Show_favorite_results_dialog
+from tasks_bot import start_find
 
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("aiogram_dialog").setLevel(logging.DEBUG)
@@ -25,6 +32,7 @@ class MySahibindenBot():
         self.dp.register_message_handler(self.set_find_params, text="Параметры поиска", state="*")
         self.dp.register_message_handler(self.show, text="Показать варианты", state="*")
         self.dp.register_message_handler(self.show_favorite, text="Показать избранное", state="*")
+        self.dp.register_message_handler(self.find, text="Поиск", state="*")
         self.database = Db_controller()
         self.database.create_table()
         self.registry = DialogRegistry(self.dp)
@@ -69,6 +77,13 @@ class MySahibindenBot():
 
     async def show_favorite(self, m: Message, dialog_manager: DialogManager):
         await dialog_manager.start(self.show_fav_results_states.show, mode=StartMode.RESET_STACK)
+
+    async def find(self, m: Message, dialog_manager: DialogManager):
+        await m.answer('Поиск запущен')
+        # вызываем поиск start_search
+        id = m.from_user.id
+        start_find.delay(id)
+        print('stop')
 
 
 if __name__ == '__main__':
