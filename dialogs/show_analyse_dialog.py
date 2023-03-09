@@ -70,17 +70,17 @@ class Show_analyse_dialog:
                 self.image,
                 self.districts,
                 Row(
-                    Button(Const("1+м"), id="1_m", on_click=self.test, ),
-                    Button(Const("1+"), id="1_", on_click=self.test, ),
-                    Button(Const("2+м"), id="2_m", on_click=self.test, ),
-                    Button(Const("2+"), id="2_", on_click=self.test, ),
-                    Button(Const("3+м"), id="3_m", on_click=self.test, ),
-                    Button(Const("3+"), id="3_", on_click=self.test, ),
+                    Button(Const("1+м"), id="1_m", on_click=self.change_analyse_picture, ),
+                    Button(Const("1+"), id="1_", on_click=self.change_analyse_picture, ),
+                    Button(Const("2+м"), id="2_m", on_click=self.change_analyse_picture, ),
+                    Button(Const("2+"), id="2_", on_click=self.change_analyse_picture, ),
+                    Button(Const("3+м"), id="3_m", on_click=self.change_analyse_picture, ),
+                    Button(Const("3+"), id="3_", on_click=self.change_analyse_picture, ),
                 ),
                 Cancel(Const("Отмена"), on_click=self.clean_memory),
                 parse_mode=ParseMode.HTML,
                 state=self.states_group.show,
-                getter=self.get_first_data
+                getter=self.refresh_dialog_message
             )
         )
 
@@ -104,14 +104,14 @@ class Show_analyse_dialog:
         # os.makedirs(f"{os.getcwd()}/{kwargs['state']")
         return True
 
-    async def test(self, c: CallbackQuery, button: Button, manager: DialogManager):
+    async def change_analyse_picture(self, c: CallbackQuery, button: Button, manager: DialogManager):
         if self.districts.get_checked(manager):
-            await self.next_add(manager, self.analyse_base[self.districts.get_checked(manager)][button.widget_id])
+            await self.set_analyse_id_in_state(manager, self.analyse_base[self.districts.get_checked(manager)][button.widget_id])
         else:
-            await self.next_add(manager,self.analyse_base['muratpasha'][button.widget_id])
+            await self.set_analyse_id_in_state(manager, self.analyse_base['muratpasha'][button.widget_id])
         return True
 
-    async def next_add(self, manager: DialogManager,id):
+    async def set_analyse_id_in_state(self, manager: DialogManager, id):
         if self.districts.get_checked(manager):
             print(self.districts.get_checked(manager))
         async with manager.data['state'].proxy() as data:
@@ -132,7 +132,7 @@ class Show_analyse_dialog:
         img = get_graph(id_url, self.db)
         img.savefig(f'{path}/{id_user}_{id_url}.png', format='png')
 
-    async def get_first_data(self, **kwargs):
+    async def refresh_dialog_message(self, **kwargs):
         path = f'{os.getcwd()}/analyse/{kwargs["state"].chat}'
         async with kwargs['state'].proxy() as data:
             if 'id' not in data or data['id'] == None:
