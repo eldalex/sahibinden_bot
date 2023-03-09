@@ -153,9 +153,6 @@ class Db_controller():
 
     def save_all_result_to_base(self, all_results_distinct):
         try:
-            # так как все результаты хранятся в одной таблице с идентификатором по номеру объявления, результаты разных пользователей могут пересекаться
-            # отправляем их на дополнительную фильтрацию, и запишем только те что еще не присутствуют в БД
-            all_results_distinct = self.get_only_new_results(all_results_distinct)
             if all_results_distinct:
                 cursor = self.get_cursor()
                 sql_insert_query = (f'INSERT INTO ALL_RESULTS (app_id,url,thumbnail_url,area,rooms,price,date,district) '

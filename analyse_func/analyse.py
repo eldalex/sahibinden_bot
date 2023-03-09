@@ -1,5 +1,6 @@
 import os
 import sys
+import numpy as np
 sys.path.append(os.path.abspath('../dbcontrolpack'))
 # sys.path.append(os.path.abspath('../parser'))
 # sys.path.append(os.path.abspath('../database'))
@@ -45,22 +46,36 @@ def get_graph(id,db):
     count_ads_list=[]
     date_list=[]
     description=data[0][6]
+    position = np.arange(len(date_list))
     for point in data:
-        min_price_list.append(point[0])
-        max_price_list.append(point[1])
-        avg_price_list.append(point[2])
-        med_price_list.append(point[3])
-        count_ads_list.append(point[4])
-        date_list.append(point[5])
+        if point[5].split(' ')[0] not in date_list:
+            min_price_list.append(point[0])
+            max_price_list.append(point[1])
+            avg_price_list.append(point[2])
+            med_price_list.append(point[3])
+            count_ads_list.append(point[4])
+            date_list.append(point[5].split(' ')[0])
     all_graph=[min_price_list,max_price_list,avg_price_list,med_price_list]
     mpl.use('TkAgg')  # !IMPORTANT
     fig, ax = plt.subplots(figsize=(10,7))
     for graph in all_graph:
         ax.set_title(description.replace('\r','').replace('\n',' '))
         res = ax.plot(date_list, graph)  # Plt some data on the axes.o
+
+    labels = date_list
+    point=len(labels)-4
+    for i in range(len(labels)-2,-1,-1):
+        if i==point:
+            point-=3
+        else:
+            labels[i]=''
+
+    ax.set_xticklabels(labels)
     plt.xticks(rotation=20)
     plt.grid(True)
-    plt.legend(["Минимальная цена", "Максимальная цена", "Средняя цена", "Медианная цена"],loc="lower left")
-    plt.show() # optionally show the result.
+    plt.legend([f"Минимальная цена: последние данные:({min_price_list[-1]})", f"Максимальная цена: последние данные:({max_price_list[-1]})", f"Средняя цена: последние данные:({avg_price_list[-1]})", f"Медианная цена: последние данные:({med_price_list[-1]})"],loc="lower left")
+    # plt.autoscale=True
+    # plt.show() # optionally show the result.
+    return fig
     # fig.savefig('мой график')
 

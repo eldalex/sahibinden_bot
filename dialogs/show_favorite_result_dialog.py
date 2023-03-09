@@ -52,12 +52,12 @@ class Show_favorite_results_dialog():
                     data['next_add'] = 1
                     data['prev_add'] = 0
                     self.html_text.template_text = "<b>{{title}}</b>\n" \
-                                                   "<b>ID : </b>{{appart[0]}}\n" \
-                                                   "<b>Ссылка : </b><a href='{{appart[1]}}'>Полное объявление</a>\n" \
-                                                   "<b>Площадь : </b>{{appart[3]}}\n" \
-                                                   "<b>Количество комнат : </b>{{appart[4]}}\n" \
-                                                   "<b>Цена : </b>{{appart[5]}}\n" \
-                                                   "<b>Дата публикации : </b>{{appart[6]}}\n" \
+                                                   "<b>ID: </b>{{appart[0]}}\n" \
+                                                   "<b>Ссылка: </b><a href='{{appart[1]}}'>Полное объявление</a>\n" \
+                                                   "<b>Площадь: </b>{{appart[3]}}\n" \
+                                                   "<b>Количество комнат: </b>{{appart[4]}}\n" \
+                                                   "<b>Цена: </b>{{appart[5]}}\n" \
+                                                   "<b>Дата публикации: </b>{{appart[6]}}\n" \
                                                    "<b>Район: </b>{{appart[7]}}"
                     first_result = data['result'][0]
                     self.image.url.text = data['result'][0][2]
@@ -69,18 +69,18 @@ class Show_favorite_results_dialog():
                     }
 
             return {
-                "title": "Квартира:",
+                "title": f"Квартира: 1 из {len(data['result'])}",
                 "appart": first_result
             }
 
-    def construct_dialog_str(self, app):
-        return f"<b>Квартира</b>\n" \
-               f"<b>ID :</b>{app[0]}\n" \
-               f"<b>Ссылка :</b><a href='{app[1]}'>link</a>\n" \
-               f"<b>Площадь :</b>{app[3]}\n" \
-               f"<b>Количество комнат :</b>{app[4]}\n" \
-               f"<b>Цена :</b>{app[5]}\n" \
-               f"<b>Дата публикации :</b>{app[6]}\n" \
+    def construct_dialog_str(self, app,current,countad):
+        return f"<b>Квартира: {current} из {countad}</b>\n" \
+               f"<b>ID: </b>{app[0]}\n" \
+               f"<b>Ссылка: </b><a href='{app[1]}'>Полное объявление</a>\n" \
+               f"<b>Площадь: </b>{app[3]}\n" \
+               f"<b>Количество комнат: </b>{app[4]}\n" \
+               f"<b>Цена: </b>{app[5]}\n" \
+               f"<b>Дата публикации: </b>{app[6]}\n" \
                f"<b>Район: </b>{app[7]}"
 
     # Смена содержания диалога на следующее объявление
@@ -91,7 +91,8 @@ class Show_favorite_results_dialog():
                     next_app = data['result'][data['current_add']]
                 else:
                     next_app = data['result'][data['current_add'] + 1]
-                next_str = self.construct_dialog_str(next_app)
+                print(f"{data['prev_add']=},{data['current_add']=},{data['next_add']=}")
+                next_str = self.construct_dialog_str(next_app,data['result'].index(next_app)+1,len(data['result']))
                 img = next_app[2]
                 if data['current_add'] != len(data['result']) - 1:
                     data['current_add'] += 1
@@ -109,7 +110,8 @@ class Show_favorite_results_dialog():
                     next_app = data['result'][data['current_add']]
                 else:
                     next_app = data['result'][data['current_add'] - 1]
-                next_str = self.construct_dialog_str(next_app)
+                print(f"{data['prev_add']=},{data['current_add']=},{data['next_add']=}")
+                next_str = self.construct_dialog_str(next_app,data['result'].index(next_app)+1,len(data['result']))
                 if data['current_add'] >= 1:
                     data['current_add'] -= 1
                 img = next_app[2]
