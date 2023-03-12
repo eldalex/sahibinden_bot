@@ -91,7 +91,7 @@ class Show_results_dialog():
                     next_app = data['result'][data['current_add']]
                 else:
                     next_app = data['result'][data['current_add'] + 1]
-                next_str = self.construct_dialog_str(next_app,data['result'].index(next_app)+1,len(data['result']))
+                next_str = self.construct_dialog_str(next_app, data['result'].index(next_app) + 1, len(data['result']))
                 img = next_app[2]
                 if data['current_add'] != len(data['result']) - 1:
                     data['current_add'] += 1
@@ -109,7 +109,7 @@ class Show_results_dialog():
                     next_app = data['result'][data['current_add']]
                 else:
                     next_app = data['result'][data['current_add'] - 1]
-                next_str = self.construct_dialog_str(next_app,data['result'].index(next_app)+1,len(data['result']))
+                next_str = self.construct_dialog_str(next_app, data['result'].index(next_app) + 1, len(data['result']))
                 if data['current_add'] >= 1:
                     data['current_add'] -= 1
                 img = next_app[2]
@@ -143,7 +143,8 @@ class Show_results_dialog():
         idfav = await self.get_favorite_id(manager)
         self.db.add_to_favorite(manager.event.from_user.id, idfav)
 
-    async def clean_memory(self, *args):
-        async with args[2].data['state'].proxy() as data:
+    async def clean_memory(self, query: CallbackQuery, manager: DialogManager, *args):
+        async with args[0].data['state'].proxy() as data:
             if data.get('result'):
                 data['result'] = None
+        await query.message.delete()

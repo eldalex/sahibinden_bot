@@ -10,10 +10,8 @@ from aiogram.types import ParseMode
 from aiogram.types import CallbackQuery
 from analyse_func.analyse import get_graph
 from operator import itemgetter
-import io
 import os
 import shutil
-from PIL import Image
 
 
 class Show_analyse_dialog_state(StatesGroup):
@@ -99,28 +97,22 @@ class Show_analyse_dialog:
             items=self.district,
         )
 
-    async def prev_add(self, c: CallbackQuery, button: Button, manager: DialogManager):
-        # print(os.getcwd())
-        # os.makedirs(f"{os.getcwd()}/{kwargs['state']")
-        return True
-
     async def change_analyse_picture(self, c: CallbackQuery, button: Button, manager: DialogManager):
         if self.districts.get_checked(manager):
-            await self.set_analyse_id_in_state(manager, self.analyse_base[self.districts.get_checked(manager)][button.widget_id])
+            await self.set_analyse_id_in_state(manager,
+                                               self.analyse_base[self.districts.get_checked(manager)][button.widget_id])
         else:
             await self.set_analyse_id_in_state(manager, self.analyse_base['muratpasha'][button.widget_id])
         return True
 
     async def set_analyse_id_in_state(self, manager: DialogManager, id):
-        if self.districts.get_checked(manager):
-            print(self.districts.get_checked(manager))
         async with manager.data['state'].proxy() as data:
             if 'id' in data:
                 data['id'] = id
         return True
 
     async def clean_memory(self, c: CallbackQuery, button: Button, manager: DialogManager):
-        pass
+        await c.message.delete()
 
     async def clean_path(self, path):
         if os.path.exists(path):
@@ -144,4 +136,4 @@ class Show_analyse_dialog:
                 await self.refresh_pictute(data['id'], kwargs["state"].chat, path)
         self.image.path.text = f'{path}/{kwargs["state"].chat}_{id_url}.png'
         self.html_text.template_text = '<b>{{title}}</b>'
-        return {"title": "test test test"}
+        return {"title": " "}

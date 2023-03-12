@@ -155,8 +155,9 @@ class Db_controller():
         try:
             if all_results_distinct:
                 cursor = self.get_cursor()
-                sql_insert_query = (f'INSERT INTO ALL_RESULTS (app_id,url,thumbnail_url,area,rooms,price,date,district) '
-                                    f'VALUES ')
+                sql_insert_query = (
+                    f'INSERT INTO ALL_RESULTS (app_id,url,thumbnail_url,area,rooms,price,date,district) '
+                    f'VALUES ')
                 for result in all_results_distinct:
                     one_value_str = f"({result['id']}, '{result['link']}', '{result['thumbnail_url']}', {result['area']}, '{result['rooms']}', '{result['price']}', '{result['date_listing']}', '{result['district']}'),"
                     sql_insert_query += one_value_str
@@ -177,9 +178,33 @@ class Db_controller():
             results = cursor.fetchall()
             urls = []
             for item in results:
-                urls.append(item[1])
+                urls.append([item[0], item[1]])
             cursor.close()
             return urls
+        except Exception as ex:
+            print(f'get_user_urls:   {ex}')
+
+    def remove_user_find_url(self, url_id):
+        try:
+            cursor = self.get_cursor()
+            sql_insert_query = (
+                f'DELETE FROM USERS_FIND_PARAMS '
+                f'WHERE id={url_id}')
+            cursor.execute(sql_insert_query)
+            self.connection.commit()
+            cursor.close()
+        except Exception as ex:
+            print(f'remove_user_find_url:   {ex}')
+
+    def get_one_user_find_url(self, url_id):
+        try:
+            cursor = self.get_cursor()
+            cursor.execute(
+                f"SELECT id,url FROM USERS_FIND_PARAMS "
+                f"WHERE id={url_id}"
+            )
+            results = cursor.fetchall()
+            return results
         except Exception as ex:
             print(f'get_user_urls:   {ex}')
 
@@ -253,6 +278,19 @@ class Db_controller():
         self.connection.commit()
         cursor.close()
 
+    def update_search_url(self, url_id, url):
+        cursor = self.get_cursor()
+        try:
+            cursor.execute(
+                f"UPDATE USERS_FIND_PARAMS "
+                f"SET URL='{url}' "
+                f"where id={url_id} "
+            )
+        except Exception as ex:
+            print(f'save_search_url:   {ex}')
+        self.connection.commit()
+        cursor.close()
+
     def add_search_url(self, user_id, url):
         if not self.check_search_url(user_id, url):
             self.save_search_url(user_id, url)
@@ -261,9 +299,8 @@ class Db_controller():
             print('такой запрос уже существует. ничего не делаем.')
 
     def get_user_result(self, user_id, type):
-        if type == 'all':
-            table = 'USERS_FIND_RESULT'
-        elif type == 'fav':
+        table = 'USERS_FIND_RESULT'
+        if type == 'fav':
             table = 'USERS_FAVORITE_APP'
         try:
             cursor = self.get_cursor()

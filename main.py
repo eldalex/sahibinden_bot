@@ -1,5 +1,6 @@
 import os
 import sys
+
 sys.path.append(os.path.abspath('celery_scheduler'))
 sys.path.append(os.path.abspath('dbcontrolpack'))
 sys.path.append(os.path.abspath('parser'))
@@ -7,7 +8,8 @@ sys.path.append(os.path.abspath('analyse_func'))
 
 import logging
 import time
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InlineKeyboardMarkup, \
+    InlineKeyboardButton, CallbackQuery
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, executor
@@ -30,11 +32,21 @@ class MySahibindenBot():
         self.storage = MemoryStorage()
         self.dp = Dispatcher(self.bot, storage=self.storage)
         self.dp.register_message_handler(self.start, text="/start", state="*")
-        self.dp.register_message_handler(self.set_find_params, text="Параметры поиска", state="*")
+        self.dp.register_message_handler(self.new_find_params, text="Параметры поиска", state="*")
         self.dp.register_message_handler(self.show, text="Показать варианты", state="*")
         self.dp.register_message_handler(self.show_favorite, text="Показать избранное", state="*")
         self.dp.register_message_handler(self.find, text="Поиск", state="*")
         self.dp.register_message_handler(self.show_analyse_dialog, text="Анализ", state="*")
+        self.dp.register_message_handler(self.show_main_menu, text="Меню", state="*")
+        # self.dp.register_message_handler(self.test_function, text="Тест", state="*")
+        self.dp.register_callback_query_handler(self.button_edit_filter,
+                                                lambda c: c.data.split('|')[0] == 'edit_filter')
+        self.dp.register_callback_query_handler(self.button_remove_filter,
+                                                lambda c: c.data.split('|')[0] == 'remove_filter')
+        self.dp.register_callback_query_handler(self.create_new_filter,
+                                                lambda c: c.data == 'create_new_filter')
+        self.dp.register_callback_query_handler(self.close_filters_redactor,
+                                                lambda c: c.data == 'close_filters_redactor')
         self.database = Db_controller()
         self.database.create_table()
         self.registry = DialogRegistry(self.dp)
@@ -54,13 +66,25 @@ class MySahibindenBot():
     def start_bot(self):
         executor.start_polling(self.dp, skip_updates=True)
 
-    def get_menu_keyboard(self):
+    def get_menu_keyboard(self, user_id=0):
         kb = ReplyKeyboardMarkup(resize_keyboard=True)
         kb.add(KeyboardButton('Параметры поиска'))
         kb.add(KeyboardButton('Поиск'))
         kb.row(KeyboardButton('Показать варианты'), KeyboardButton('Показать избранное'))
         kb.add(KeyboardButton('Анализ'))
+        if user_id == 1606686846:
+            pass
+            # kb.add(KeyboardButton('Тест'))
+
         return kb
+
+    def main_menu(self):
+        kb = ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add(KeyboardButton('Меню'))
+        return kb
+
+    async def show_main_menu(self, m: Message):
+        await m.answer('Меню:', reply_markup=self.get_menu_keyboard(m.from_user.id))
 
     async def start(self, m: Message, dialog_manager: DialogManager):
         userinfo = (
@@ -70,6 +94,8 @@ class MySahibindenBot():
             m.from_user.last_name,
             time.ctime()
         )
+        await self.bot.send_message(os.environ.get('MYID'),
+                                    f'Новый пользователь!\nИмя: {userinfo[2]}\nФамилия: {userinfo[3]}\nЛогин: @{userinfo[1]}')
         self.database.send_user_info(userinfo)
         await  m.answer(f'Добрый день {m.from_user.username}!\n'
                         f'Я бот помощник в поиске квартир на sahibinden.\n'
@@ -81,26 +107,93 @@ class MySahibindenBot():
                         f'В данный момент я ещё не готов к полноценной работе, но я стремлюсь!\n'
                         f'В будущем будет прикручена аналитика по ценам на отдельные сегменты квартир в больших районах Анталии.\n'
                         f'Она уже собирается. надо только придумать в каком виде выводить информацию.',
-                        reply_markup=self.get_menu_keyboard())
-
-    async def set_find_params(self, m: Message, dialog_manager: DialogManager):
-        await dialog_manager.start(self.find_params_states.district, mode=StartMode.RESET_STACK)
+                        reply_markup=self.get_menu_keyboard(m.from_user.id))
 
     async def show(self, m: Message, dialog_manager: DialogManager):
+        await m.answer('варианты:', reply_markup=self.main_menu())
         await dialog_manager.start(self.show_results_states.show, mode=StartMode.RESET_STACK)
 
     async def show_favorite(self, m: Message, dialog_manager: DialogManager):
+        await m.answer('избранное:', reply_markup=self.main_menu())
         await dialog_manager.start(self.show_fav_results_states.show, mode=StartMode.RESET_STACK)
 
     async def show_analyse_dialog(self, m: Message, dialog_manager: DialogManager):
-        await dialog_manager.start(self.show_analyse_states.show, mode=StartMode.RESET_STACK)
+        await dialog_manager.start(self.show_analyse_states.show, mode=StartMode.RESET_STACK, )
+
+    async def create_new_filter(self, m: Message, dialog_manager: DialogManager):
+        await dialog_manager.start(self.find_params_states.district, mode=StartMode.RESET_STACK)
+
+    async def button_remove_filter(self, query: CallbackQuery, dialog_manager: DialogManager, **kwargs):
+        id = int(query.data.split('|')[1].split('=')[1])
+        self.database.remove_user_find_url(id)
+        await self.bot.answer_callback_query(query.id)
+        await query.message.delete()
+        markup = await self.get_find_params_markup(query.from_user.id)
+        await self.bot.send_message(query.from_user.id, 'Редактор фильтров!', reply_markup=markup)
+
+    async def button_edit_filter(self, query: CallbackQuery, dialog_manager: DialogManager, **kwargs):
+        id = int(query.data.split('|')[1].split('=')[1])
+        url = self.database.get_one_user_find_url(id)
+        params = url[0][1].split('?')[1].split('&')[1:-1]
+        await self.bot.answer_callback_query(query.id)
+        await dialog_manager.start(self.find_params_states.district, mode=StartMode.RESET_STACK,
+                                   data={'params': params,
+                                         'load': True,
+                                         'save_id': id})
+
+    async def get_description_from_url(self, url):
+        towns = {'83': 'Муратпаша', '84': 'Кепез', '85': 'Коньялты', '86': 'Аксу'}
+        rooms = {'38473': '1+1',
+                 '1206094': '1.5+1',
+                 '1213206': '2+0',
+                 '38470': '2+1',
+                 '1259450': '3+0'}
+        params = url.split('?')[1].split('&')[:-1]
+        params_dict = []
+        for param in params:
+            params_dict.append({param.split('=')[0]: param.split('=')[1]})
+        description = ''
+        for param in params_dict:
+            if 'address_town' in param:
+                description += towns[param['address_town']] + ' /'
+        description = description[:-1]
+        for param in params_dict:
+            if 'a20' in param:
+                description += ' | ' + rooms[param['a20']]
+            elif 'price_max' in param:
+                description += f'. До {param["price_max"]} TL'
+        return description
+
+    async def get_find_params_markup(self, user_id):
+        urls = self.database.get_user_urls(user_id)
+        markup = InlineKeyboardMarkup()
+        new_filter_button = InlineKeyboardButton(text='Создать новый фильтр', callback_data=f'create_new_filter')
+        markup.add(new_filter_button)
+        for url in urls:
+            button = InlineKeyboardButton(text=await self.get_description_from_url(url[1]),
+                                          callback_data='none')
+            button1 = InlineKeyboardButton(text=f"удалить", callback_data=f'remove_filter|id={url[0]}')
+            button2 = InlineKeyboardButton(text=f"редактировать", callback_data=f'edit_filter|id={url[0]}')
+            markup.row(button)
+            markup.row(button1, button2)
+        markup.add(InlineKeyboardButton(text='Отмена', callback_data=f'close_filters_redactor'))
+        return markup
+
+    async def close_filters_redactor(self, query: CallbackQuery, dialog_manager: DialogManager, **kwargs):
+        await query.message.delete()
+
+    async def new_find_params(self, m: Message, dialog_manager: DialogManager):
+        markup = await self.get_find_params_markup(m.from_user.id)
+        await self.bot.send_message(m.chat.id, 'Редактор фильтров!', reply_markup=markup)
+
+    async def test_function(self, m: Message, dialog_manager: DialogManager, **kwargs):
+        pass
 
     async def find(self, m: Message, dialog_manager: DialogManager):
         await m.answer('Поиск запущен')
         # вызываем поиск start_search
         id = m.from_user.id
         start_find.delay(id)
-        print('stop')
 
 
 if __name__ == '__main__':

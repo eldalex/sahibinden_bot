@@ -107,7 +107,10 @@ class Sahibinden_parser():
             all_results = []
             distinct_id = []
             all_results_distinct = []
-            urls = self.get_current_user_find_urls(user_id)
+            urls=[]
+            id_and_urls = self.get_current_user_find_urls(user_id)
+            for url in id_and_urls:
+                urls.append(url[1])
             all_results = self.get_all_results(urls)
             all_results_distinct, distinct_id = self.get_all_results_distinct(all_results)
             # так как все результаты хранятся в одной таблице с идентификатором по номеру объявления, результаты разных пользователей могут пересекаться

@@ -33,42 +33,49 @@ class Find_params_dialog():
             Window(
                 Const("Выбор района города:"),
                 self.districts,
-                Button(Const('Выбрать комнаты'), id='go_to_rooms', on_click=self.check_district_before),
-                Cancel(Const("Отмена")),
+                Button(Const('Далее'), id='go_to_rooms', on_click=self.check_district_before),
+                Cancel(Const("Отмена"), on_click=self.delete_message_after_cancel),
                 state=self.states_group.district,
+                getter=self.get_info
             ),
             Window(
                 Const("Выбрать количество комнат:"),
                 self.rooms,
                 Row(
                     Back(Const("Назад")),
-                    Button(Const('Возраст дома'), id='go_to_years', on_click=self.check_rooms_before),
+                    Button(Const('Далее'), id='go_to_years', on_click=self.check_rooms_before),
                 ),
-                Cancel(Const("Отмена")),
+                Cancel(Const("Отмена"), on_click=self.delete_message_after_cancel),
                 state=self.states_group.room,
             ),
             Window(
                 Const("Выбор возраста дома"),
                 self.years,
-                Back(Const("Назад")),
-                Button(Const("Дата объявления"), id="go_to_date", on_click=self.check_years_before, ),
-                Cancel(Const("Отмена")),
+                Row(
+                    Back(Const("Назад")),
+                    Button(Const("Далее"), id="go_to_date", on_click=self.check_years_before, ),
+                ),
+                Cancel(Const("Отмена"), on_click=self.delete_message_after_cancel),
                 state=self.states_group.year,
             ),
             Window(
                 Const("Дата размещения объявления"),
                 self.dates,
-                Back(Const("Назад")),
-                Button(Const("Цена за месяц"), id="go_to_finish", on_click=self.check_date_before, ),
-                Cancel(Const("Отмена")),
+                Row(
+                    Back(Const("Назад")),
+                    Button(Const("Далее"), id="go_to_finish", on_click=self.check_date_before, ),
+                ),
+                Cancel(Const("Отмена"), on_click=self.delete_message_after_cancel),
                 state=self.states_group.date,
             ),
             Window(
                 Const("Цена в TL, 0 - без фильтра."),
                 self.prices,
-                Back(Const("Назад")),
-                Button(Const("Закончить"), id="go_to_finish", on_click=self.check_price_before, ),
-                Cancel(Const("Отмена")),
+                Row(
+                    Back(Const("Назад"), on_click=self.delete_message_after_cancel),
+                    Button(Const("Далее"), id="go_to_finish", on_click=self.check_price_before, ),
+                ),
+                Cancel(Const("Отмена"), on_click=self.delete_message_after_cancel),
                 state=self.states_group.price,
             ),
             Window(
@@ -78,6 +85,9 @@ class Find_params_dialog():
                 state=self.states_group.finish,
             )
         )
+
+    async def delete_message_after_cancel(self, query: CallbackQuery, *args):
+        await query.message.delete()
 
     def set_districts(self):
         self.district = [
@@ -93,6 +103,27 @@ class Find_params_dialog():
             item_id_getter=operator.itemgetter(1),
             items=self.district,
         )
+
+    async def get_info(self, dialog_manager, aiogd_context, **kwargs):
+        if aiogd_context.data:
+            if aiogd_context.data['load'] == True:
+                params = aiogd_context.data['params']
+                for param in params:
+                    if param.split('=')[0] == 'date':
+                        await self.dates.set_checked(item_id=f'{param}&', manager=dialog_manager, event=None)
+                    elif param.split('=')[0] == 'address_town':
+                        await self.districts.set_checked(item_id=f"{param}&", checked=True, manager=dialog_manager,
+                                                         event=None)
+                    elif param.split('=')[0] == 'a20':
+                        await self.rooms.set_checked(item_id=f"{param}&", checked=True, manager=dialog_manager,
+                                                     event=None)
+                    elif param.split('=')[0] == 'a812':
+                        await self.years.set_checked(item_id=f"{param}&", checked=True, manager=dialog_manager,
+                                                     event=None)
+                    elif param.split('=')[0] == 'price_max':
+                        await self.prices.set_checked(item_id=f"{param}&", manager=dialog_manager, event=None)
+                aiogd_context.data[1] = False
+        return []
 
     def set_rooms(self):
         self.room = [
@@ -197,5 +228,11 @@ class Find_params_dialog():
             base_url += year
         base_url += self.dates.get_checked(manager)
         base_url += self.prices.get_checked(manager)
-        self.db.add_search_url(manager.event.from_user.id, base_url)
+        if manager.data['aiogd_context'].data:
+            if manager.data['aiogd_context'].data['save_id']:
+                self.db.update_search_url(manager.data['aiogd_context'].data['save_id'], base_url)
+                manager.data['aiogd_context'].data['save_id'] = None
+        else:
+            self.db.add_search_url(manager.event.from_user.id, base_url)
+
         await manager.done()

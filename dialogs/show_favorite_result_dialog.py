@@ -73,7 +73,7 @@ class Show_favorite_results_dialog():
                 "appart": first_result
             }
 
-    def construct_dialog_str(self, app,current,countad):
+    def construct_dialog_str(self, app, current, countad):
         return f"<b>Квартира: {current} из {countad}</b>\n" \
                f"<b>ID: </b>{app[0]}\n" \
                f"<b>Ссылка: </b><a href='{app[1]}'>Полное объявление</a>\n" \
@@ -91,8 +91,7 @@ class Show_favorite_results_dialog():
                     next_app = data['result'][data['current_add']]
                 else:
                     next_app = data['result'][data['current_add'] + 1]
-                print(f"{data['prev_add']=},{data['current_add']=},{data['next_add']=}")
-                next_str = self.construct_dialog_str(next_app,data['result'].index(next_app)+1,len(data['result']))
+                next_str = self.construct_dialog_str(next_app, data['result'].index(next_app) + 1, len(data['result']))
                 img = next_app[2]
                 if data['current_add'] != len(data['result']) - 1:
                     data['current_add'] += 1
@@ -110,8 +109,7 @@ class Show_favorite_results_dialog():
                     next_app = data['result'][data['current_add']]
                 else:
                     next_app = data['result'][data['current_add'] - 1]
-                print(f"{data['prev_add']=},{data['current_add']=},{data['next_add']=}")
-                next_str = self.construct_dialog_str(next_app,data['result'].index(next_app)+1,len(data['result']))
+                next_str = self.construct_dialog_str(next_app, data['result'].index(next_app) + 1, len(data['result']))
                 if data['current_add'] >= 1:
                     data['current_add'] -= 1
                 img = next_app[2]
@@ -135,10 +133,11 @@ class Show_favorite_results_dialog():
         if str:
             self.html_text.template_text = (str)
 
-    async def clean_memory(self, *args):
-        async with args[2].data['state'].proxy() as data:
+    async def clean_memory(self, query: CallbackQuery, manager: DialogManager, *args):
+        async with args[0].data['state'].proxy() as data:
             if data.get('result'):
                 data['result'] = None
+        await query.message.delete()
 
     async def delete_from_favorite(self, c: CallbackQuery, button: Button, manager: DialogManager):
         idfav = await self.get_favorite_id(manager)
