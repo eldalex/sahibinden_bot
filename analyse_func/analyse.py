@@ -2,12 +2,7 @@ import os
 import sys
 import numpy as np
 sys.path.append(os.path.abspath('../dbcontrolpack'))
-# sys.path.append(os.path.abspath('../parser'))
-# sys.path.append(os.path.abspath('../database'))
-# sys.path.append(os.path.abspath('../analyse_func'))
-import time
-# from dbcontrolpack.db_control import Db_controller
-# from parser.sahibinden_pars import Sahibinden_parser
+
 import re
 
 
@@ -73,7 +68,11 @@ def get_graph(id,db):
     ax.set_xticklabels(labels)
     plt.xticks(rotation=20)
     plt.grid(True)
-    plt.legend([f"Минимальная цена: последние данные:({min_price_list[-1]})", f"Максимальная цена: последние данные:({max_price_list[-1]})", f"Средняя цена: последние данные:({avg_price_list[-1]})", f"Медианная цена: последние данные:({med_price_list[-1]})"],loc="lower left")
+    plt.legend([
+        f"Минимальная цена: последние данные:({min_price_list[-1]})",
+        f"Максимальная цена: последние данные:({max_price_list[-1]})",
+        f"Средняя цена: последние данные:({avg_price_list[-1]})",
+        f"Медианная цена: последние данные:({med_price_list[-1]})"],loc="lower left")
     # plt.autoscale=True
     # plt.show() # optionally show the result.
     return fig

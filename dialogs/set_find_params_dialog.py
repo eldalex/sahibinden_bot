@@ -18,7 +18,7 @@ class Find_params_states(StatesGroup):
 
 
 class Find_params_dialog():
-    def __init__(self, database):
+    def __init__(self, database,bot,markup):
         self.db = database
         self.set_districts()
         self.set_dates()
@@ -27,6 +27,9 @@ class Find_params_dialog():
         self.set_prices()
         self.states_group = Find_params_states()
         self.dialog = self.get_dialog()
+        self.bot = bot
+        self.markup=markup
+
 
     def get_dialog(self):
         return Dialog(
@@ -86,8 +89,9 @@ class Find_params_dialog():
             )
         )
 
-    async def delete_message_after_cancel(self, query: CallbackQuery, *args):
+    async def delete_message_after_cancel(self, query: CallbackQuery,*args):
         await query.message.delete()
+        await self.bot.send_message(query.from_user.id, 'Редактор фильтров!', reply_markup=await self.markup(query.from_user.id))
 
     def set_districts(self):
         self.district = [
@@ -122,7 +126,7 @@ class Find_params_dialog():
                                                      event=None)
                     elif param.split('=')[0] == 'price_max':
                         await self.prices.set_checked(item_id=f"{param}&", manager=dialog_manager, event=None)
-                aiogd_context.data[1] = False
+                aiogd_context.data['load'] = False
         return []
 
     def set_rooms(self):
@@ -234,5 +238,6 @@ class Find_params_dialog():
                 manager.data['aiogd_context'].data['save_id'] = None
         else:
             self.db.add_search_url(manager.event.from_user.id, base_url)
+        await self.bot.send_message(c.from_user.id, 'Чтобы выполнить поиск нажмите на /find или выберите соответствующий пункт в меню', reply_markup=await self.markup(c.from_user.id))
 
         await manager.done()

@@ -50,7 +50,7 @@ class MySahibindenBot():
         self.database = Db_controller()
         self.database.create_table()
         self.registry = DialogRegistry(self.dp)
-        self.find_params_dialog = Find_params_dialog(self.database)
+        self.find_params_dialog = Find_params_dialog(self.database,self.bot, self.get_find_params_markup)
         self.find_params_states = self.find_params_dialog.states_group
         self.show_results_dialog = Show_results_dialog(self.database)
         self.show_results_states = self.show_results_dialog.states_group
@@ -108,6 +108,7 @@ class MySahibindenBot():
 
     async def create_new_filter(self, query: CallbackQuery, dialog_manager: DialogManager):
         await self.bot.answer_callback_query(query.id)
+        await query.message.delete()
         await dialog_manager.start(self.find_params_states.district, mode=StartMode.RESET_STACK)
 
     async def button_remove_filter(self, query: CallbackQuery):
@@ -123,6 +124,7 @@ class MySahibindenBot():
         url = self.database.get_one_user_find_url(id)
         params = url[0][1].split('?')[1].split('&')[1:-1]
         await self.bot.answer_callback_query(query.id)
+        await query.message.delete()
         await dialog_manager.start(self.find_params_states.district, mode=StartMode.RESET_STACK,
                                    data={'params': params,
                                          'load': True,
