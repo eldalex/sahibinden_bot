@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath('analyse_func'))
 import logging
 import time
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InlineKeyboardMarkup, \
-    InlineKeyboardButton, CallbackQuery
+    InlineKeyboardButton, CallbackQuery, BotCommand
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, executor
@@ -31,14 +31,13 @@ class MySahibindenBot():
         self.bot = Bot(token=os.environ.get('TOKEN'))
         self.storage = MemoryStorage()
         self.dp = Dispatcher(self.bot, storage=self.storage)
+        self.bot.set_my_commands(self.set_bot_commands())
         self.dp.register_message_handler(self.start, text="/start", state="*")
-        self.dp.register_message_handler(self.new_find_params, text="Параметры поиска", state="*")
-        self.dp.register_message_handler(self.show, text="Показать варианты", state="*")
-        self.dp.register_message_handler(self.show_favorite, text="Показать избранное", state="*")
-        self.dp.register_message_handler(self.find, text="Поиск", state="*")
-        self.dp.register_message_handler(self.show_analyse_dialog, text="Анализ", state="*")
-        self.dp.register_message_handler(self.show_main_menu, text="Меню", state="*")
-        # self.dp.register_message_handler(self.test_function, text="Тест", state="*")
+        self.dp.register_message_handler(self.new_find_params, text="/set_find_params", state="*")
+        self.dp.register_message_handler(self.show, text="/show_all", state="*")
+        self.dp.register_message_handler(self.show_favorite, text="/show_favorite", state="*")
+        self.dp.register_message_handler(self.find, text="/find", state="*")
+        self.dp.register_message_handler(self.show_analyse_dialog, text="/analysis", state="*")
         self.dp.register_callback_query_handler(self.button_edit_filter,
                                                 lambda c: c.data.split('|')[0] == 'edit_filter')
         self.dp.register_callback_query_handler(self.button_remove_filter,
@@ -63,28 +62,14 @@ class MySahibindenBot():
         self.registry.register(self.show_fav_results_dialog.dialog)
         self.registry.register(self.show_analyse_dialog.dialog)
 
+    def set_bot_commands(self):
+        commands = [
+            BotCommand(command='/start', description='Начать работу')
+        ]
+        return commands
+
     def start_bot(self):
         executor.start_polling(self.dp, skip_updates=True)
-
-    def get_menu_keyboard(self, user_id=0):
-        kb = ReplyKeyboardMarkup(resize_keyboard=True)
-        kb.add(KeyboardButton('Параметры поиска'))
-        kb.add(KeyboardButton('Поиск'))
-        kb.row(KeyboardButton('Показать варианты'), KeyboardButton('Показать избранное'))
-        kb.add(KeyboardButton('Анализ'))
-        if user_id == 1606686846:
-            pass
-            # kb.add(KeyboardButton('Тест'))
-
-        return kb
-
-    def main_menu(self):
-        kb = ReplyKeyboardMarkup(resize_keyboard=True)
-        kb.add(KeyboardButton('Меню'))
-        return kb
-
-    async def show_main_menu(self, m: Message):
-        await m.answer('Меню:', reply_markup=self.get_menu_keyboard(m.from_user.id))
 
     async def start(self, m: Message, dialog_manager: DialogManager):
         userinfo = (
@@ -107,14 +92,14 @@ class MySahibindenBot():
                         f'В данный момент я ещё не готов к полноценной работе, но я стремлюсь!\n'
                         f'В будущем будет прикручена аналитика по ценам на отдельные сегменты квартир в больших районах Анталии.\n'
                         f'Она уже собирается. надо только придумать в каком виде выводить информацию.',
-                        reply_markup=self.get_menu_keyboard(m.from_user.id))
+                        )
 
     async def show(self, m: Message, dialog_manager: DialogManager):
-        await m.answer('варианты:', reply_markup=self.main_menu())
+        await m.answer('варианты:')
         await dialog_manager.start(self.show_results_states.show, mode=StartMode.RESET_STACK)
 
     async def show_favorite(self, m: Message, dialog_manager: DialogManager):
-        await m.answer('избранное:', reply_markup=self.main_menu())
+        await m.answer('избранное:')
         await dialog_manager.start(self.show_fav_results_states.show, mode=StartMode.RESET_STACK)
 
     async def show_analyse_dialog(self, m: Message, dialog_manager: DialogManager):
