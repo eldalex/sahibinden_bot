@@ -8,8 +8,7 @@ sys.path.append(os.path.abspath('analyse_func'))
 
 import logging
 import time
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InlineKeyboardMarkup, \
-    InlineKeyboardButton, CallbackQuery, BotCommand
+from aiogram.types import Message,InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, BotCommand
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, executor
@@ -46,6 +45,8 @@ class MySahibindenBot():
                                                 lambda c: c.data == 'create_new_filter')
         self.dp.register_callback_query_handler(self.close_filters_redactor,
                                                 lambda c: c.data == 'close_filters_redactor')
+        self.dp.register_callback_query_handler(self.to_do_nothing,
+                                                lambda c: c.data == 'to_do_nothing')
         self.database = Db_controller()
         self.database.create_table()
         self.registry = DialogRegistry(self.dp)
@@ -71,7 +72,7 @@ class MySahibindenBot():
     def start_bot(self):
         executor.start_polling(self.dp, skip_updates=True)
 
-    async def start(self, m: Message, dialog_manager: DialogManager):
+    async def start(self, m: Message):
         userinfo = (
             m.from_user.id,
             m.from_user.username,
@@ -105,10 +106,11 @@ class MySahibindenBot():
     async def show_analyse_dialog(self, m: Message, dialog_manager: DialogManager):
         await dialog_manager.start(self.show_analyse_states.show, mode=StartMode.RESET_STACK, )
 
-    async def create_new_filter(self, m: Message, dialog_manager: DialogManager):
+    async def create_new_filter(self, query: CallbackQuery, dialog_manager: DialogManager):
+        await self.bot.answer_callback_query(query.id)
         await dialog_manager.start(self.find_params_states.district, mode=StartMode.RESET_STACK)
 
-    async def button_remove_filter(self, query: CallbackQuery, dialog_manager: DialogManager, **kwargs):
+    async def button_remove_filter(self, query: CallbackQuery):
         id = int(query.data.split('|')[1].split('=')[1])
         self.database.remove_user_find_url(id)
         await self.bot.answer_callback_query(query.id)
@@ -116,7 +118,7 @@ class MySahibindenBot():
         markup = await self.get_find_params_markup(query.from_user.id)
         await self.bot.send_message(query.from_user.id, 'Редактор фильтров!', reply_markup=markup)
 
-    async def button_edit_filter(self, query: CallbackQuery, dialog_manager: DialogManager, **kwargs):
+    async def button_edit_filter(self, query: CallbackQuery, dialog_manager: DialogManager):
         id = int(query.data.split('|')[1].split('=')[1])
         url = self.database.get_one_user_find_url(id)
         params = url[0][1].split('?')[1].split('&')[1:-1]
@@ -156,7 +158,7 @@ class MySahibindenBot():
         markup.add(new_filter_button)
         for url in urls:
             button = InlineKeyboardButton(text=await self.get_description_from_url(url[1]),
-                                          callback_data='none')
+                                          callback_data='to_do_nothing')
             button1 = InlineKeyboardButton(text=f"удалить", callback_data=f'remove_filter|id={url[0]}')
             button2 = InlineKeyboardButton(text=f"редактировать", callback_data=f'edit_filter|id={url[0]}')
             markup.row(button)
@@ -165,16 +167,21 @@ class MySahibindenBot():
         return markup
 
     async def close_filters_redactor(self, query: CallbackQuery, dialog_manager: DialogManager, **kwargs):
+        await self.bot.answer_callback_query(query.id)
         await query.message.delete()
 
-    async def new_find_params(self, m: Message, dialog_manager: DialogManager):
+    async def to_do_nothing(self, query: CallbackQuery, dialog_manager: DialogManager, **kwargs):
+        await self.bot.answer_callback_query(query.id)
+
+
+    async def new_find_params(self, m: Message):
         markup = await self.get_find_params_markup(m.from_user.id)
         await self.bot.send_message(m.chat.id, 'Редактор фильтров!', reply_markup=markup)
 
     async def test_function(self, m: Message, dialog_manager: DialogManager, **kwargs):
         pass
 
-    async def find(self, m: Message, dialog_manager: DialogManager):
+    async def find(self, m: Message):
         await m.answer('Поиск запущен')
         # вызываем поиск start_search
         id = m.from_user.id
